@@ -1,4 +1,4 @@
-// Package lifecycle provides shared types for provider lifecycle management.
+//revive:disable:package-comments
 package lifecycle
 
 import "context"

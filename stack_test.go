@@ -12,47 +12,47 @@ import (
 func TestStackZeroValue(t *testing.T) {
 	var stack lifecycle.Stack
 
-	if err := stack.Shutdown(t.Context()); err != nil {
-		t.Fatalf("Shutdown() error = %v, want nil", err)
+	if err := stack.Unwind(t.Context()); err != nil {
+		t.Fatalf("Cleanup() error = %v, want nil", err)
 	}
 }
 
-func TestStackShutdown(t *testing.T) {
+func TestStackCleanup(t *testing.T) {
 	ctx := t.Context()
-	firstErr := errors.New("first shutdown")
-	lastErr := errors.New("last shutdown")
+	firstErr := errors.New("first cleanup")
+	lastErr := errors.New("last cleanup")
 	order := make([]string, 0, 3)
 	var stack lifecycle.Stack
 
 	stack.Push(nil)
-	stack.Push(recordShutdown(t, ctx, &order, "first", firstErr))
-	stack.Push(recordShutdown(t, ctx, &order, "second", nil))
-	stack.Push(recordShutdown(t, ctx, &order, "last", lastErr))
+	stack.Push(recordCleanup(t, ctx, &order, "first", firstErr))
+	stack.Push(recordCleanup(t, ctx, &order, "second", nil))
+	stack.Push(recordCleanup(t, ctx, &order, "last", lastErr))
 
-	err := stack.Shutdown(ctx)
+	err := stack.Unwind(ctx)
 	if !errors.Is(err, firstErr) {
-		t.Errorf("Shutdown() error = %v, want error wrapping %v", err, firstErr)
+		t.Errorf("Unwind() error = %v, want error wrapping %v", err, firstErr)
 	}
 	if !errors.Is(err, lastErr) {
-		t.Errorf("Shutdown() error = %v, want error wrapping %v", err, lastErr)
+		t.Errorf("Unwind() error = %v, want error wrapping %v", err, lastErr)
 	}
 	if want := []string{"last", "second", "first"}; !slices.Equal(order, want) {
-		t.Errorf("Shutdown() order = %v, want %v", order, want)
+		t.Errorf("Unwind() order = %v, want %v", order, want)
 	}
 }
 
-func recordShutdown(
+func recordCleanup(
 	t *testing.T,
 	wantContext context.Context,
 	order *[]string,
 	name string,
 	err error,
-) lifecycle.ShutdownFunc {
+) lifecycle.CleanupFunc {
 	t.Helper()
 
 	return func(ctx context.Context) error {
 		if ctx != wantContext {
-			t.Errorf("shutdown context = %v, want test context %v", ctx, wantContext)
+			t.Errorf("cleanup context = %v, want test context %v", ctx, wantContext)
 		}
 		*order = append(*order, name)
 		return err

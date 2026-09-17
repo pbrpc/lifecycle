@@ -4,29 +4,33 @@ package lifecycle
 import (
 	"context"
 	"errors"
+	"slices"
 )
 
-// Stack collects shutdown functions and invokes them in reverse registration
+// CleanupFunc gracefully drains a component of any pending work.
+type CleanupFunc func(ctx context.Context) error
+
+// Stack collects cleanup functions and invokes them in reverse registration
 // order. Its zero value is ready to use.
 type Stack struct {
-	shutdowns []ShutdownFunc
+	cleanups []CleanupFunc
 }
 
-// Push adds shutdownFunc to the stack. Push ignores a nil shutdown function.
-func (s *Stack) Push(shutdownFunc ShutdownFunc) {
-	if shutdownFunc == nil {
+// Push adds cleanupFunc to the stack. Push ignores a nil cleanup function.
+func (s *Stack) Push(cleanupFunc CleanupFunc) {
+	if cleanupFunc == nil {
 		return
 	}
 
-	s.shutdowns = append(s.shutdowns, shutdownFunc)
+	s.cleanups = append(s.cleanups, cleanupFunc)
 }
 
-// Shutdown invokes every registered shutdown function in reverse registration
+// Unwind invokes every registered cleanup function in reverse registration
 // order with ctx. It continues after errors and joins all errors it encounters.
-func (s *Stack) Shutdown(ctx context.Context) error {
+func (s *Stack) Unwind(ctx context.Context) error {
 	var errs []error
-	for index := len(s.shutdowns) - 1; index >= 0; index-- {
-		if err := s.shutdowns[index](ctx); err != nil {
+	for _, v := range slices.Backward(s.cleanups) {
+		if err := v(ctx); err != nil {
 			errs = append(errs, err)
 		}
 	}

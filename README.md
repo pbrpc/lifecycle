@@ -1,8 +1,7 @@
 # lifecycle
 
-`lifecycle` defines transport-independent shutdown contracts for pbrpc
-libraries and services. It does not own signals, timeouts, logging, or any
-particular server or client implementation.
+`lifecycle` coordinates transport-independent graceful unwinding and draining
+for pbrpc libraries and services.
 
 ## Installation
 
@@ -12,21 +11,20 @@ go get github.com/pbrpc/lifecycle
 
 ## Usage
 
-The zero value of `Stack` is ready to use. Add shutdown functions as components
-start, then shut them down with the context owned by the application:
+The zero value of `Stack` is ready to use. Add cleanup functions as components
+start. Components are drained in last-in, first-out order, so push telemetry
+before the server when telemetry must remain available while requests drain:
 
 ```go
-var shutdowns lifecycle.Stack
+var stack lifecycle.Stack
 
-shutdowns.Push(cache.Shutdown)
-shutdowns.Push(telemetry.Shutdown)
+stack.Push(lifecycle.Logged(log, "telemetry", flush))
+stack.Push(lifecycle.Logged(log, "server", server.HTTP.Shutdown))
 
-if err := shutdowns.Shutdown(ctx); err != nil {
-	return err
-}
+defer lifecycle.HandleGracefulShutdown(ctx, log, &stack, cleanupTimeout)
 ```
 
-`Shutdown` invokes every registered function in last-in, first-out order and
-passes each one the supplied context unchanged. A failure does not prevent the
-remaining functions from running; all failures are returned as one joined
-error. Pushing a nil function has no effect.
+`HandleGracefulShutdown` creates one cleanup deadline and invokes the stack.
+`Logged` records each component as it begins and completes draining. A failure
+does not prevent the remaining functions from running; the stack joins all
+failures. Pushing a nil function has no effect.

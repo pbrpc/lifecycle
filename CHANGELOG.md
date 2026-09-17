@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## 0.2.0 - 2026-09-17
+#### Features
+- add shutdown lifecycle handling - (a6a0d76) - Nathan Blair
+
+- - -
+
 ## 0.1.0 - 2026-09-16
 #### Features
 - initial release - (32ffa0b) - Nathan Blair
